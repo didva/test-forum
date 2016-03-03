@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!--Properties Start-->
+    <context:property-placeholder location="classpath:config.properties, classpath:config.properties"/>
+    <!--Properties End-->
+
+    <!-- DAOs Start -->
+    <bean id="userDao" class="com.dmytro.mudrov.forum.server.dao.inmemmory.UserDaoImpl"/>
+    <bean id="themeDao" class="com.dmytro.mudrov.forum.server.dao.inmemmory.ThemeDaoImpl"/>
+    <bean id="commentsDao" class="com.dmytro.mudrov.forum.server.dao.inmemmory.CommentsDaoImpl"/>
+    <!-- DAOs End -->
+
+    <!-- Services Start -->
+    <bean id="userService" class="com.dmytro.mudrov.forum.server.service.UserService">
+        <property name="userDao" ref="userDao"/>
+    </bean>
+    <bean id="themeService" class="com.dmytro.mudrov.forum.server.service.ThemeService">
+        <property name="userService" ref="userService"/>
+        <property name="themeDao" ref="themeDao"/>
+    </bean>
+    <bean id="commentsService" class="com.dmytro.mudrov.forum.server.service.CommentService">
+        <property name="userService" ref="userService"/>
+        <property name="themeService" ref="themeService"/>
+        <property name="commentDao" ref="commentsDao"/>
+    </bean>
+    <!-- Services End -->
+
+    <!-- Controllers Start -->
+    <bean id="userController" class="com.dmytro.mudrov.forum.server.controller.user.UserController">
+        <property name="userService" ref="userService"/>
+    </bean>
+    <bean id="createThemeController" class="com.dmytro.mudrov.forum.server.controller.theme.CreateThemeController">
+        <property name="themeService" ref="themeService"/>
+    </bean>
+    <bean id="removeThemeController" class="com.dmytro.mudrov.forum.server.controller.theme.RemoveThemeController">
+        <property name="themeService" ref="themeService"/>
+    </bean>
+    <bean id="createCommentController" class="com.dmytro.mudrov.forum.server.controller.comment.CreateCommentController">
+        <property name="commentService" ref="commentsService"/>
+    </bean>
+    <bean id="removeCommentController" class="com.dmytro.mudrov.forum.server.controller.comment.RemoveCommentController">
+        <property name="commentService" ref="commentsService"/>
+    </bean>
+    <!-- Controllers End -->
+
+    <bean id="dispatcher" class="com.dmytro.mudrov.forum.server.handlers.Dispatcher">
+        <property name="controllers">
+            <map>
+                <entry key="${controllers.user.create}" value-ref="userController"/>
+                <entry key="${controllers.theme.create}" value-ref="createThemeController"/>
+                <entry key="${controllers.theme.remove}" value-ref="removeThemeController"/>
+                <entry key="${controllers.comment.create}" value-ref="createCommentController"/>
+                <entry key="${controllers.comment.remove}" value-ref="removeCommentController"/>
+            </map>
+        </property>
+    </bean>
+    <bean id="requestHandler" class="com.dmytro.mudrov.forum.server.handlers.RequestHandler" scope="prototype" lazy-init="true"/>
+    <bean id="server" class="com.dmytro.mudrov.forum.server.handlers.Server" init-method="start" destroy-method="shutdown">
+        <property name="port" value="${server.port}"/>
+        <property name="threadCount" value="${server.threads.count}"/>
+        <property name="dispatcher" ref="dispatcher"/>
+        <lookup-method name="getRequestHandler" bean="requestHandler"/>
+    </bean>
+
+</beans>
